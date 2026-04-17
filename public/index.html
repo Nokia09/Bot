@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Minecraft Multi Bot Panel</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --bg: #0b1220;
+            --panel: rgba(15, 23, 42, 0.92);
+            --panel-2: rgba(30, 41, 59, 0.9);
+            --line: rgba(148, 163, 184, 0.22);
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --accent: #60a5fa;
+            --accent-2: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+            --radius: 22px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(96, 165, 250, 0.16), transparent 28%),
+                radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.12), transparent 30%),
+                linear-gradient(180deg, #050814 0%, #0b1220 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .wrap {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 22px;
+            padding: 18px 20px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.75));
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(12px);
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 22px;
+            line-height: 1.2;
+        }
+
+        .brand p {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 14px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(2, 6, 23, 0.35);
+            color: var(--text);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.76));
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            backdrop-filter: blur(12px);
+        }
+
+        .card-header {
+            padding: 18px 18px 14px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .card-header h2 {
+            margin: 0;
+            font-size: 17px;
+        }
+
+        .card-header p {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .card-body {
+            padding: 18px;
+        }
+
+        .field {
+            margin-bottom: 14px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #cbd5e1;
+        }
+
+        .field input, .field textarea {
+            width: 100%;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 14px;
+            background: rgba(2, 6, 23, 0.45);
+            color: var(--text);
+            padding: 12px 13px;
+            outline: none;
+            transition: border-color 0.15s ease, transform 0.15s ease;
+        }
+
+        .field input:focus, .field textarea:focus {
+            border-color: rgba(96, 165, 250, 0.72);
+            transform: translateY(-1px);
+        }
+
+        .field textarea {
+            min-height: 92px;
+            resize: vertical;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .btnbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        button {
+            border: 0;
+            border-radius: 14px;
+            padding: 11px 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+            opacity: 0.95;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            color: white;
+            box-shadow: 0 12px 26px rgba(59, 130, 246, 0.24);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #34d399, #22c55e);
+            color: white;
+            box-shadow: 0 12px 26px rgba(34, 197, 94, 0.2);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #fb7185, #ef4444);
+            color: white;
+            box-shadow: 0 12px 26px rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-ghost {
+            background: rgba(148, 163, 184, 0.12);
+            color: var(--text);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .stat {
+            padding: 16px;
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.75));
+            border: 1px solid rgba(148, 163, 184, 0.16);
+        }
+
+        .stat .label {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 7px;
+        }
+
+        .stat .value {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: 0.2px;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .toolbar .left,
+        .toolbar .right {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search {
+            min-width: 240px;
+            max-width: 380px;
+        }
+
+        .bot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .bot-card {
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-radius: 20px;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.82));
+            overflow: hidden;
+        }
+
+        .bot-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: start;
+            padding: 16px 16px 12px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+        }
+
+        .bot-title {
+            min-width: 0;
+        }
+
+        .bot-title h3 {
+            margin: 0;
+            font-size: 17px;
+            line-height: 1.2;
+            word-break: break-word;
+        }
+
+        .bot-title .meta {
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .status {
+            padding: 7px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+            white-space: nowrap;
+            border: 1px solid transparent;
+        }
+
+        .online {
+            background: rgba(34, 197, 94, 0.14);
+            color: #86efac;
+            border-color: rgba(34, 197, 94, 0.25);
+        }
+
+        .connecting {
+            background: rgba(245, 158, 11, 0.14);
+            color: #fcd34d;
+            border-color: rgba(245, 158, 11, 0.25);
+        }
+
+        .offline, .error, .kicked {
+            background: rgba(239, 68, 68, 0.14);
+            color: #fca5a5;
+            border-color: rgba(239, 68, 68, 0.25);
+        }
+
+        .bot-body {
+            padding: 14px 16px 16px;
+        }
+
+        .bot-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .mini {
+            padding: 12px;
+            border-radius: 16px;
+            background: rgba(2, 6, 23, 0.35);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .mini .k {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+
+        .mini .v {
+            font-size: 15px;
+            font-weight: 700;
+            word-break: break-word;
+        }
+
+        .bot-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .log {
+            margin-top: 16px;
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            background: rgba(2, 6, 23, 0.35);
+            padding: 12px;
+            height: 220px;
+            overflow: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .log-item {
+            padding: 8px 10px;
+            border-radius: 12px;
+            background: rgba(148, 163, 184, 0.08);
+            margin-bottom: 8px;
+            word-break: break-word;
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 8px;
+            line-height: 1.45;
+        }
+
+        .empty {
+            padding: 24px;
+            text-align: center;
+            color: var(--muted);
+            border: 1px dashed rgba(148, 163, 184, 0.24);
+            border-radius: 18px;
+            background: rgba(2, 6, 23, 0.22);
+        }
+
+        @media (max-width: 1180px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .bot-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .wrap {
+                padding: 14px;
+            }
+
+            .topbar, .card-header, .card-body {
+                padding-left: 14px;
+                padding-right: 14px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .row {
+                grid-template-columns: 1fr;
+            }
+
+            .search {
+                min-width: 100%;
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="topbar">
+            <div class="brand">
+                <h1>🤖 Minecraft Multi Bot Panel</h1>
+                <p>Quản lý nhiều bot, đổi server, đổi tên, xem trạng thái, chat, xoá bot.</p>
+            </div>
+            <div class="pill">
+                <span>🟢</span>
+                <span id="socketState">Đang kết nối...</span>
+            </div>
+        </div>
+
+        <div class="layout">
+            <section class="card">
+                <div class="card-header">
+                    <h2>Tạo bot mới</h2>
+                    <p>Nhập host, port và username rồi bấm tạo bot.</p>
+                </div>
+                <div class="card-body">
+                    <div class="field">
+                        <label>Bot ID</label>
+                        <input id="botId" placeholder="Ví dụ: bot_1" />
+                    </div>
+
+                    <div class="field">
+                        <label>Host</label>
+                        <input id="host" placeholder="helosmp.freezehost.com" value="helosmp.freezehost.com" />
+                    </div>
+
+                    <div class="row">
+                        <div class="field">
+                            <label>Port</label>
+                            <input id="port" type="number" placeholder="8861" value="8861" />
+                        </div>
+                        <div class="field">
+                            <label>Username</label>
+                            <input id="username" placeholder="WebBot_X" value="WebBot_X" />
+                        </div>
+                    </div>
+
+                    <div class="btnbar">
+                        <button class="btn-primary" onclick="createBot()">➕ Tạo bot</button>
+                        <button class="btn-success" onclick="stopAll()">⛔ Dừng tất cả</button>
+                    </div>
+
+                    <p class="hint">
+                        Bạn có thể tạo nhiều bot khác nhau bằng cách đổi Bot ID. Nếu bỏ trống, hệ thống sẽ tự tạo ID theo thời gian.
+                    </p>
+
+                    <div class="field" style="margin-top:18px;">
+                        <label>Gửi chat cho bot đang chọn</label>
+                        <textarea id="chatMsg" placeholder="Nhập nội dung chat..."></textarea>
+                    </div>
+
+                    <div class="btnbar">
+                        <button class="btn-ghost" onclick="sendChat()">💬 Gửi chat</button>
+                        <button class="btn-ghost" onclick="refreshList()">🔄 Làm mới</button>
+                    </div>
+
+                    <div class="log" id="logBox"></div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>Danh sách bot</h2>
+                    <p>Xem online/offline, HP, food, uptime và điều khiển từng bot.</p>
+                </div>
+                <div class="card-body">
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <div class="label">Tổng bot</div>
+                            <div class="value" id="totalBots">0</div>
+                        </div>
+                        <div class="stat">
+                            <div class="label">Đang online</div>
+                            <div class="value" id="onlineBots">0</div>
+                        </div>
+                        <div class="stat">
+                            <div class="label">Đang kết nối</div>
+                            <div class="value" id="connectingBots">0</div>
+                        </div>
+                        <div class="stat">
+                            <div class="label">Lỗi / kick</div>
+                            <div class="value" id="errorBots">0</div>
+                        </div>
+                    </div>
+
+                    <div class="toolbar">
+                        <div class="left">
+                            <input class="field input search" id="search" placeholder="Tìm bot theo tên / host / port..." oninput="renderBots()" />
+                        </div>
+                        <div class="right">
+                            <span class="pill">💡 Click “Chọn” để chat đúng bot</span>
+                        </div>
+                    </div>
+
+                    <div id="botGrid" class="bot-grid"></div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+
+        let botList = [];
+        let selectedBotId = '';
+
+        const ui = {
+            state: document.getElementById('socketState'),
+            botGrid: document.getElementById('botGrid'),
+            totalBots: document.getElementById('totalBots'),
+            onlineBots: document.getElementById('onlineBots'),
+            connectingBots: document.getElementById('connectingBots'),
+            errorBots: document.getElementById('errorBots'),
+            logBox: document.getElementById('logBox')
+        };
+
+        function addLog(text) {
+            const item = document.createElement('div');
+            item.className = 'log-item';
+            item.textContent = text;
+            ui.logBox.prepend(item);
+        }
+
+        function getInputs() {
+            return {
+                id: document.getElementById('botId').value.trim(),
+                host: document.getElementById('host').value.trim(),
+                port: Number(document.getElementById('port').value),
+                username: document.getElementById('username').value.trim()
+            };
+        }
+
+        function createBot() {
+            const data = getInputs();
+
+            if (!data.host) {
+                alert('Bạn chưa nhập host');
+                return;
+            }
+
+            if (!data.port || data.port < 1 || data.port > 65535) {
+                alert('Port không hợp lệ');
+                return;
+            }
+
+            if (!data.username) {
+                alert('Bạn chưa nhập username');
+                return;
+            }
+
+            socket.emit('createBot', {
+                id: data.id,
+                config: {
+                    host: data.host,
+                    port: data.port,
+                    username: data.username
+                }
+            }, (res) => {
+                if (res && res.ok) {
+                    addLog(`✅ Đã tạo bot: ${res.id}`);
+                    selectedBotId = res.id;
+                    refreshList();
+                } else {
+                    addLog(`❌ Tạo bot lỗi: ${res ? res.message : 'unknown error'}`);
+                }
+            });
+        }
+
+        function deleteBot(id) {
+            if (!confirm(`Xoá bot ${id}?`)) return;
+
+            socket.emit('deleteBot', id, (res) => {
+                if (res && res.ok) {
+                    addLog(`🗑️ Đã xoá bot: ${id}`);
+                    if (selectedBotId === id) selectedBotId = '';
+                    refreshList();
+                } else {
+                    addLog(`❌ Xoá bot lỗi: ${res ? res.message : 'unknown error'}`);
+                }
+            });
+        }
+
+        function restartBot(id) {
+            const data = getInputs();
+
+            if (!data.host) {
+                alert('Bạn chưa nhập host');
+                return;
+            }
+
+            if (!data.port || data.port < 1 || data.port > 65535) {
+                alert('Port không hợp lệ');
+                return;
+            }
+
+            if (!data.username) {
+                alert('Bạn chưa nhập username');
+                return;
+            }
+
+            socket.emit('restartBot', {
+                id,
+                config: {
+                    host: data.host,
+                    port: data.port,
+                    username: data.username
+                }
+            }, (res) => {
+                if (res && res.ok) {
+                    addLog(`🔁 Đã restart bot: ${id}`);
+                    refreshList();
+                } else {
+                    addLog(`❌ Restart lỗi: ${res ? res.message : 'unknown error'}`);
+                }
+            });
+        }
+
+        function selectBot(id) {
+            selectedBotId = id;
+            addLog(`🎯 Đã chọn bot: ${id}`);
+        }
+
+        function sendChat() {
+            const msg = document.getElementById('chatMsg').value.trim();
+
+            if (!selectedBotId) {
+                alert('Hãy chọn bot trước');
+                return;
+            }
+
+            if (!msg) {
+                alert('Bạn chưa nhập chat');
+                return;
+            }
+
+            socket.emit('chat', {
+                id: selectedBotId,
+                msg
+            }, (res) => {
+                if (res && res.ok) {
+                    addLog(`💬 [${selectedBotId}] ${msg}`);
+                    document.getElementById('chatMsg').value = '';
+                } else {
+                    addLog(`❌ Gửi chat lỗi: ${res ? res.message : 'unknown error'}`);
+                }
+            });
+        }
+
+        function stopAll() {
+            if (!confirm('Dừng tất cả bot?')) return;
+
+            socket.emit('stopAll', {}, (res) => {
+                if (res && res.ok) {
+                    addLog('⛔ Đã dừng toàn bộ bot');
+                    selectedBotId = '';
+                    refreshList();
+                } else {
+                    addLog(`❌ Stop all lỗi: ${res ? res.message : 'unknown error'}`);
+                }
+            });
+        }
+
+        function refreshList() {
+            renderBots();
+        }
+
+        function renderBots() {
+            const keyword = document.getElementById('search').value.trim().toLowerCase();
+            const filtered = botList.filter(bot => {
+                const text = `${bot.id} ${bot.username} ${bot.host} ${bot.port} ${bot.status}`.toLowerCase();
+                return text.includes(keyword);
+            });
+
+            ui.totalBots.textContent = botList.length;
+            ui.onlineBots.textContent = botList.filter(b => b.online).length;
+            ui.connectingBots.textContent = botList.filter(b => b.status === 'connecting').length;
+            ui.errorBots.textContent = botList.filter(b => ['kicked', 'error', 'offline'].includes(b.status)).length;
+
+            if (!filtered.length) {
+                ui.botGrid.innerHTML = `
+                    <div class="empty" style="grid-column:1 / -1;">
+                        Chưa có bot nào hoặc không tìm thấy kết quả.
+                    </div>
+                `;
+                return;
+            }
+
+            ui.botGrid.innerHTML = filtered.map(bot => {
+                const statusClass = bot.status || 'offline';
+                const selected = selectedBotId === bot.id ? 'outline: 2px solid rgba(96,165,250,0.5);' : '';
+
+                return `
+                    <article class="bot-card" style="${selected}">
+                        <div class="bot-head">
+                            <div class="bot-title">
+                                <h3>${escapeHtml(bot.username)} <span style="opacity:.7">(${escapeHtml(bot.id)})</span></h3>
+                                <div class="meta">
+                                    ${escapeHtml(bot.host)}:${bot.port}<br>
+                                    ${bot.x}, ${bot.y}, ${bot.z}
+                                </div>
+                            </div>
+                            <span class="status ${statusClass}">${escapeHtml(bot.status)}</span>
+                        </div>
+
+                        <div class="bot-body">
+                            <div class="bot-stats">
+                                <div class="mini">
+                                    <span class="k">HP</span>
+                                    <div class="v">${bot.hp}</div>
+                                </div>
+                                <div class="mini">
+                                    <span class="k">Food</span>
+                                    <div class="v">${bot.food}</div>
+                                </div>
+                                <div class="mini">
+                                    <span class="k">Uptime</span>
+                                    <div class="v">${bot.uptime}s</div>
+                                </div>
+                                <div class="mini">
+                                    <span class="k">Trạng thái</span>
+                                    <div class="v">${bot.online ? 'Online' : 'Offline'}</div>
+                                </div>
+                            </div>
+
+                            <div class="bot-actions">
+                                <button class="btn-primary" onclick="selectBot('${escapeAttr(bot.id)}')">Chọn</button>
+                                <button class="btn-success" onclick="restartBot('${escapeAttr(bot.id)}')">Restart</button>
+                                <button class="btn-danger" onclick="deleteBot('${escapeAttr(bot.id)}')">Xoá</button>
+                            </div>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function escapeAttr(str) {
+            return String(str).replaceAll("'", '&#39;').replaceAll('"', '&quot;');
+        }
+
+        socket.on('connect', () => {
+            ui.state.textContent = 'Đã kết nối';
+            addLog('🟢 Kết nối server thành công');
+        });
+
+        socket.on('disconnect', () => {
+            ui.state.textContent = 'Mất kết nối';
+            addLog('🔴 Mất kết nối tới server');
+        });
+
+        socket.on('botList', (list) => {
+            botList = Array.isArray(list) ? list : [];
+            renderBots();
+        });
+
+        socket.on('chat', (payload) => {
+            if (!payload) return;
+            addLog(payload.text || JSON.stringify(payload));
+        });
+
+        // Tạo bot bằng Enter
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                createBot();
+            }
+        });
+    </script>
+</body>
+</html>
